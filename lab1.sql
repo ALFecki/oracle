@@ -6,9 +6,9 @@ CREATE TABLE MyTable (
 
 -- 2
 BEGIN
-  FOR i IN 1..10000 LOOP
+  FOR i IN 1..10 LOOP
     INSERT INTO MyTable (id, val)
-    VALUES (i, DBMS_RANDOM.VALUE(1, 10000));
+    VALUES (i, ROUND(DBMS_RANDOM.VALUE(1, 10000), 0));
   END LOOP;
   COMMIT;
   DBMS_OUTPUT.PUT_LINE('Записи успешно добавлены в таблицу MyTable.');
@@ -58,12 +58,40 @@ END;
 /
 
 -- 4
+CREATE OR REPLACE FUNCTION GenerateInsertStatementErrorHandling(p_id NUMBER, p_val NUMBER)
+  RETURN VARCHAR2
+IS
+  l_count NUMBER;
+  v_insert_statement VARCHAR2(4000);
+BEGIN
+  SELECT COUNT(*) INTO l_count
+  FROM MyTable
+  WHERE id = p_id;
+  
+  IF l_count > 0 THEN
+    DBMS_OUTPUT.PUT_LINE('Ошибка: Запись с ID ' || p_id || ' уже существует.');
+    RETURN NULL;
+  END IF;
+
+  v_insert_statement := 'INSERT INTO MyTable (id, val) VALUES (' || p_id || ', ' || p_val || ');';
+  DBMS_OUTPUT.PUT_LINE(v_insert_statement);
+  
+  RETURN v_insert_statement;
+
+EXCEPTION
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('Произошла ошибка: ' || SQLERRM);
+    RETURN NULL;
+END;
+
+
 CREATE OR REPLACE FUNCTION GenerateInsertStatement(p_id NUMBER)
   RETURN VARCHAR2
 IS
   v_val NUMBER;
   v_insert_statement VARCHAR2(4000);
 BEGIN
+
   SELECT val INTO v_val
   FROM MyTable
   WHERE id = p_id;
@@ -174,14 +202,26 @@ END;
 
 
 -- 6
-CREATE OR REPLACE FUNCTION CalculateAnnualCompensation(p_monthly_salary NUMBER, p_annual_bonus_percentage NUMBER)
+CREATE OR REPLACE FUNCTION CalculateAnnualCompensation(p_monthly_salary NUMBER, p_annual_bonus_percentage VARCHAR)
   RETURN NUMBER
 IS
+  p_annual_bonus_percentage_number NUMBER;
   v_annual_bonus_percentage_decimal NUMBER;
   v_annual_compensation NUMBER;
 BEGIN
+  IF NOT REGEXP_LIKE(p_annual_bonus_percentage, '^-*[[:digit:]]+$') THEN
+    RAISE_APPLICATION_ERROR(-20001, 'Процент годовых премиальных должен быть числом.');
+  END IF;
+  IF NOT REGEXP_LIKE(p_monthly_salary, '^-*[[:digit:]]+$') THEN
+      RAISE_APPLICATION_ERROR(-20001, 'Зарплата должна быть числом.');
+  END IF;
+  p_annual_bonus_percentage_number := CAST(p_annual_bonus_percentage AS NUMBER);
+
   IF p_annual_bonus_percentage < 0 THEN
     RAISE_APPLICATION_ERROR(-20001, 'Процент годовых премиальных не может быть отрицательным.');
+  END IF;
+  IF p_monthly_salary < 0 THEN 
+    RAISE_APPLICATION_ERROR(-20001, 'Зарплата не может быть отрицательной.');
   END IF;
   
   v_annual_bonus_percentage_decimal := p_annual_bonus_percentage / 100;
