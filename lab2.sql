@@ -67,3 +67,13 @@ BEGIN
     END IF;
 END;
 /
+
+-- 3
+CREATE OR REPLACE TRIGGER students_cascade_delete
+BEFORE DELETE ON groups
+FOR EACH ROW
+BEGIN
+    DELETE FROM students
+    WHERE group_id = :OLD.id;
+END;
+/
