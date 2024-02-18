@@ -77,3 +77,33 @@ BEGIN
     WHERE group_id = :OLD.id;
 END;
 /
+
+-- 4
+CREATE TABLE students_log (
+    log_id NUMBER PRIMARY KEY,
+    action VARCHAR2(10),
+    student_id NUMBER,
+    student_name VARCHAR2(100),
+    action_date TIMESTAMP
+);
+
+CREATE SEQUENCE students_log_seq START WITH 1 INCREMENT BY 1;
+
+CREATE OR REPLACE TRIGGER students_audit_trigger
+AFTER INSERT OR UPDATE OR DELETE ON students
+FOR EACH ROW
+DECLARE
+    v_action VARCHAR2(10);
+BEGIN
+    IF INSERTING THEN
+        v_action := 'INSERT';
+    ELSIF UPDATING THEN
+        v_action := 'UPDATE';
+    ELSIF DELETING THEN
+        v_action := 'DELETE';
+    END IF;
+
+    INSERT INTO students_log (log_id, action, student_id, student_name, action_date)
+    VALUES (students_log_seq.NEXTVAL, v_action, :OLD.id, :OLD.name, SYSTIMESTAMP);
+END;
+/
