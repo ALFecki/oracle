@@ -51,3 +51,19 @@ BEGIN
     END IF;
 END;
 /
+
+CREATE OR REPLACE TRIGGER groups_name_unique
+BEFORE INSERT OR UPDATE ON groups
+FOR EACH ROW
+DECLARE
+    duplicate_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO duplicate_count
+    FROM groups
+    WHERE name = :NEW.name;
+
+    IF duplicate_count > 0 THEN
+        RAISE_APPLICATION_ERROR(-20002, 'Duplicate NAME value');
+    END IF;
+END;
+/
