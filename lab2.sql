@@ -130,3 +130,8 @@ BEGIN
     DROP TABLE students_restored;
 END;
 /
+
+BEGIN
+    restore_students_data(TIMESTAMP '2024-02-18 12:00:00');
+END;
+/
