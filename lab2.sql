@@ -107,3 +107,26 @@ BEGIN
     VALUES (students_log_seq.NEXTVAL, v_action, :OLD.id, :OLD.name, SYSTIMESTAMP);
 END;
 /
+
+-- 5
+CREATE OR REPLACE PROCEDURE restore_students_data(
+    p_timestamp TIMESTAMP,
+    p_offset INTERVAL DAY TO SECOND DEFAULT INTERVAL '0' DAY TO SECOND
+)
+AS
+BEGIN
+    CREATE TABLE students_restored AS SELECT * FROM students WHERE 1 = 0;
+
+    INSERT INTO students_restored (id, name, group_id)
+    SELECT id, name, group_id
+    FROM students AS OF TIMESTAMP (p_timestamp + p_offset);
+
+    DELETE FROM students;
+
+    INSERT INTO students (id, name, group_id)
+    SELECT id, name, group_id
+    FROM students_restored;
+
+    DROP TABLE students_restored;
+END;
+/
