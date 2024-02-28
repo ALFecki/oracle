@@ -148,7 +148,7 @@ BEGIN
     ELSE
         restore_timestamp := SYSTIMESTAMP - time_offset;
     END IF;
-
+    DELETE students;
     FOR log_record IN (SELECT * FROM students_log WHERE action_date <= restore_timestamp) 
     LOOP
         IF log_record.action = 'INSERT' THEN
@@ -169,7 +169,7 @@ END;
 /
 
 BEGIN
-    restore_students_data(TIMESTAMP '2024-02-18 12:00:00');
+    restore_students(TIMESTAMP '2024-02-28 12:50:00');
 END;
 /
 
