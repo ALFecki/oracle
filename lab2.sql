@@ -1,72 +1,91 @@
 -- 1
 
 CREATE TABLE groups(
-    id NUMBER NOT NULL,
+    id NUMBER PRIMARY KEY,
     name VARCHAR2(100) NOT NULL,
     c_val NUMBER, -- количество студентов
-    CONSTRAINT group_pk PRIMARY KEY (id)
-
 );
 
 CREATE TABLE students(
     id NUMBER,
     name VARCHAR2(100) NOT NULL,
     group_id NUMBER,
-    CONSTRAINT student_pk PRIMARY KEY (id),
-    CONSTRAINT group_fk FOREIGN KEY(group_id) REFERENCES groups (id)
+    FOREIGN KEY(group_id) REFERENCES groups (id)
 );
 
 
+INSERT INTO GROUPS (ID, NAME, C_VAL) VALUES (1, 'Group A', 10);
+INSERT INTO GROUPS (ID, NAME, C_VAL) VALUES (2, 'Group B', 15);
+INSERT INTO GROUPS (ID, NAME, C_VAL) VALUES (3, 'Group C', 12);
+
+INSERT INTO STUDENTS (ID, NAME, GROUP_ID) VALUES (1, 'John Smith', 1);
+INSERT INTO STUDENTS (ID, NAME, GROUP_ID) VALUES (2, 'Jane Doe', 1);
+INSERT INTO STUDENTS (ID, NAME, GROUP_ID) VALUES (3, 'Michael Johnson', 2);
+INSERT INTO STUDENTS (ID, NAME, GROUP_ID) VALUES (4, 'Emily Williams', 3);
+
 -- 2
-CREATE OR REPLACE TRIGGER students_id_unique
-BEFORE INSERT OR UPDATE ON students
-FOR EACH ROW
-DECLARE
-    duplicate_count NUMBER;
-BEGIN
-    SELECT COUNT(*) INTO duplicate_count
-    FROM students
-    WHERE id = :NEW.id;
+CREATE OR REPLACE TRIGGER unique_id_students
+FOR INSERT OR UPDATE ON students
+COMPOUND TRIGGER
 
-    IF duplicate_count > 0 THEN
-        RAISE_APPLICATION_ERROR(-20001, 'Duplicate ID value');
+TYPE t_students_id IS TABLE OF NUMBER INDEX BY PLS_INTEGER;
+v_students_id t_students_id;
+
+BEFORE STATEMENT IS
+BEGIN
+    v_students_id.DELETE;
+END BEFORE STATEMENT;
+
+BEFORE EACH ROW IS
+BEGIN
+    IF INSERTING OR UPDATING THEN
+        v_students_id(v_students_id.COUNT + 1) := :NEW.ID;
     END IF;
-END;
+END BEFORE EACH ROW;
+
+AFTER STATEMENT IS
+    v_id_count NUMBER;
+BEGIN
+    FOR i IN 1 .. v_students_id.COUNT 
+    LOOP
+        SELECT COUNT(*)
+        INTO v_id_count
+        FROM students
+        WHERE id = v_students_id(i);
+        
+        DBMS_OUTPUT.PUT_LINE('Count row ' || v_id_count);
+        IF v_id_count <> 1 THEN
+            RAISE_APPLICATION_ERROR(-20001, 'This student id exists: ' || v_students_id(i));
+        END IF;
+    END LOOP;
+END AFTER STATEMENT;
+END unique_id_students;
 /
 
 
-CREATE OR REPLACE TRIGGER students_id_autoincrement
-BEFORE INSERT ON students
-FOR EACH ROW
-DECLARE
-    last_id NUMBER;
-BEGIN
-    SELECT MAX(id) INTO last_id
-    FROM students;
+CREATE OR REPLACE SEQUENCE students_id_seq
+START WITH 1
+INCREMENT BY 1;
 
-    IF last_id IS NULL THEN
-        :NEW.id := 1;
-    ELSE
-        :NEW.id := last_id + 1;
+
+CREATE OR REPLACE TRIGGER groups_id
+BEFORE INSERT ON groups
+FOR EACH ROW
+DECLARE 
+    max_id NUMBER;
+BEGIN
+    IF :NEW.ID IS NULL THEN
+        SELECT MAX(ID)
+        INTO max_id
+        FROM groups;
+        
+        IF max_id IS NOT NULL THEN
+            :NEW.ID := max_id + 1;
+        ELSE 
+            :NEW.ID := 1;
+        END IF;
     END IF;
 END;
-/
-
-CREATE OR REPLACE TRIGGER groups_name_unique
-BEFORE INSERT OR UPDATE ON groups
-FOR EACH ROW
-DECLARE
-    duplicate_count NUMBER;
-BEGIN
-    SELECT COUNT(*) INTO duplicate_count
-    FROM groups
-    WHERE name = :NEW.name;
-
-    IF duplicate_count > 0 THEN
-        RAISE_APPLICATION_ERROR(-20002, 'Duplicate NAME value');
-    END IF;
-END;
-/
 
 -- 3
 CREATE OR REPLACE TRIGGER students_cascade_delete
@@ -84,6 +103,7 @@ CREATE TABLE students_log (
     action VARCHAR2(10),
     student_id NUMBER,
     student_name VARCHAR2(100),
+    group_id NUMBER,
     action_date TIMESTAMP
 );
 
@@ -97,37 +117,54 @@ DECLARE
 BEGIN
     IF INSERTING THEN
         v_action := 'INSERT';
+        INSERT INTO students_log (log_id, action, student_id, student_name, group_id, action_date)
+            VALUES (students_log_seq.NEXTVAL, v_action, :NEW.id, :NEW.name, :NEW.group_id, SYSTIMESTAMP);
     ELSIF UPDATING THEN
         v_action := 'UPDATE';
+        INSERT INTO students_log (log_id, action, student_id, student_name, group_id, action_date)
+            VALUES (students_log_seq.NEXTVAL, v_action, :NEW.id, :NEW.name, :NEW.group_id,  SYSTIMESTAMP);
     ELSIF DELETING THEN
         v_action := 'DELETE';
+        INSERT INTO students_log (log_id, action, student_id, student_name, group_id, action_date)
+            VALUES (students_log_seq.NEXTVAL, v_action, :OLD.id, :OLD.name, :OLD.group_id, SYSTIMESTAMP);
     END IF;
-
-    INSERT INTO students_log (log_id, action, student_id, student_name, action_date)
-    VALUES (students_log_seq.NEXTVAL, v_action, :OLD.id, :OLD.name, SYSTIMESTAMP);
 END;
 /
 
 -- 5
-CREATE OR REPLACE PROCEDURE restore_students_data(
-    p_timestamp TIMESTAMP,
-    p_offset INTERVAL DAY TO SECOND DEFAULT INTERVAL '0' DAY TO SECOND
-)
+CREATE OR REPLACE PROCEDURE restore_students(
+    restore_time TIMESTAMP DEFAULT NULL,
+    time_offset INTERVAL DAY TO SECOND DEFAULT NULL
+) 
 AS
+    restore_timestamp TIMESTAMP;
 BEGIN
-    CREATE TABLE students_restored AS SELECT * FROM students WHERE 1 = 0;
+    IF restore_time IS NULL AND time_offset IS NULL THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Procedure need correct parameters.');
+    END IF;
 
-    INSERT INTO students_restored (id, name, group_id)
-    SELECT id, name, group_id
-    FROM students AS OF TIMESTAMP (p_timestamp + p_offset);
+    IF restore_time IS NOT NULL THEN
+        restore_timestamp := restore_time;
+    ELSE
+        restore_timestamp := SYSTIMESTAMP - time_offset;
+    END IF;
 
-    DELETE FROM students;
-
-    INSERT INTO students (id, name, group_id)
-    SELECT id, name, group_id
-    FROM students_restored;
-
-    DROP TABLE students_restored;
+    FOR log_record IN (SELECT * FROM students_log WHERE action_date <= restore_timestamp) 
+    LOOP
+        IF log_record.action = 'INSERT' THEN
+            IF log_record.student_id IS NOT NULL THEN
+                DELETE FROM students WHERE id = log_record.student_id; 
+            END IF;
+            INSERT INTO students (id, name, group_id)
+            VALUES (log_record.student_id, log_record.student_name, log_record.group_id);
+        ELSIF log_record.action = 'UPDATE' THEN
+            UPDATE students
+            SET name = log_record.student_name, group_id = log_record.group_id
+            WHERE id = log_record.student_id;
+        ELSIF log_record.action = 'DELETE' THEN
+            DELETE FROM students WHERE id = log_record.student_id;
+        END IF;
+    END LOOP;
 END;
 /
 
