@@ -68,24 +68,60 @@ START WITH 1
 INCREMENT BY 1;
 
 
-CREATE OR REPLACE TRIGGER groups_id
+CREATE OR REPLACE TRIGGER check_unique_id_groups
 BEFORE INSERT ON groups
 FOR EACH ROW
-DECLARE 
-    max_id NUMBER;
+DECLARE
+    id_count NUMBER;
 BEGIN
-    IF :NEW.ID IS NULL THEN
-        SELECT MAX(ID)
-        INTO max_id
-        FROM groups;
-        
-        IF max_id IS NOT NULL THEN
-            :NEW.ID := max_id + 1;
-        ELSE 
-            :NEW.ID := 1;
-        END IF;
+    SELECT COUNT(*)
+    INTO id_count
+    FROM groups
+    WHERE ID = :NEW.ID;
+
+    IF id_count > 0 THEN
+        RAISE_APPLICATION_ERROR(-20002, 'ID already exists in groups');
     END IF;
 END;
+
+
+CREATE OR REPLACE TRIGGER check_group_name
+FOR INSERT OR UPDATE ON groups
+COMPOUND TRIGGER
+
+TYPE t_group_names IS TABLE OF VARCHAR2(100) INDEX BY PLS_INTEGER;
+v_group_names t_group_names;
+
+BEFORE STATEMENT IS
+BEGIN
+    v_group_names.DELETE;
+END BEFORE STATEMENT;
+
+BEFORE EACH ROW IS
+BEGIN
+    IF INSERTING OR UPDATING THEN
+        v_group_names(v_group_names.COUNT + 1) := :NEW.name;
+    END IF;
+END BEFORE EACH ROW;
+
+AFTER STATEMENT IS
+    v_name_count NUMBER;
+BEGIN
+    FOR i IN 1 .. v_group_names.COUNT 
+    LOOP
+        SELECT COUNT(*)
+        INTO v_name_count
+        FROM groups
+        WHERE name = v_group_names(i);
+        
+        DBMS_OUTPUT.PUT_LINE('Count row ' || v_name_count);
+        IF v_name_count <> 1 THEN
+            RAISE_APPLICATION_ERROR(-20001, 'This group name exists: ' || v_group_names(i));
+        END IF;
+    END LOOP;
+END AFTER STATEMENT;
+END check_group_name;
+/
 
 -- 3
 CREATE OR REPLACE TRIGGER students_cascade_delete
@@ -187,7 +223,7 @@ BEGIN
             UPDATE groups
             SET c_val = c_val + 1
             WHERE id = :NEW.group_id;
-            UPDATE groups
+            UPDATE groups   
             SET c_val = c_val - 1
             WHERE id = :OLD.group_id;
         END IF;
