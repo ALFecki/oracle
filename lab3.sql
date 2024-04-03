@@ -58,26 +58,24 @@ ALTER TABLE dev.person ADD CONSTRAINT acc_id_fk FOREIGN KEY (acc_id) REFERENCES 
 
 CREATE TABLE dev.test1 (
     id NUMBER PRIMARY KEY,
-    t2_id NUMBER NOT NULL
+    val NUMBER NOT NULL
 );
 
 CREATE TABLE dev.test2 (
     id NUMBER PRIMARY KEY,
-    t3_id NUMBER NOT NULL
+    val NUMBER NOT NULL
 );
 
 CREATE TABLE dev.test3 (
     id NUMBER PRIMARY KEY,
-    t1_id NUMBER NOT NULL
+    val NUMBER NOT NULL
 );
 
-ALTER TABLE dev.test1 ADD CONSTRAINT fk_t1_t2 FOREIGN KEY (t2_id) REFERENCES dev.test2 (id);
+ALTER TABLE dev.test1 ADD CONSTRAINT fk_t1_t3 FOREIGN KEY (val) REFERENCES dev.test3 (id);
 
-ALTER TABLE dev.test2 ADD CONSTRAINT fk_t2_t3 FOREIGN KEY (t3_id) REFERENCES dev.test3 (id);
+ALTER TABLE dev.test3 ADD CONSTRAINT fk_t3_t2 FOREIGN KEY (val) REFERENCES dev.test2 (id);
 
-ALTER TABLE dev.test3 ADD CONSTRAINT fk_t3_t1 FOREIGN KEY (t1_id) REFERENCES dev.test1 (id);
-
-
+ALTER TABLE dev.test2 ADD CONSTRAINT fk_t2_t3 FOREIGN KEY (val) REFERENCES dev.test3 (id);
 
 ALTER TABLE dev.test3 DROP CONSTRAINT fk_t3_t1;
 
@@ -446,7 +444,7 @@ BEGIN
         dbms_output.put_line('Looped connecitons detected.');
     END IF;
 
-    dbms_output.put_line(chr(10) || 'Table in DEV but not in PROD or with different structure =========================');
+    dbms_output.put_line(chr(10) || 'Table in DEV but not in PROD or with different structure >>>>>>>>>>>>>>>>>>>>>>>>>>');
     ddl_script        := '';
     FOR i IN REVERSE 1..sorted_tables.count LOOP
         IF sorted_tables(i) NOT MEMBER OF prod_tables THEN
@@ -510,7 +508,7 @@ BEGIN
 
     dev_only_procs    := dev_procs MULTISET EXCEPT prod_procs;
     prod_only_procs   := prod_procs MULTISET EXCEPT dev_procs;
-    dbms_output.put_line('Only DEV procedures =========================');
+    dbms_output.put_line('Only DEV procedures >>>>>>>>>>>>>>>>>>>>>>>>>>');
     ddl_script        := '';
     FOR i IN 1..dev_only_procs.count LOOP
         ddl_script := ddl_script || dbms_metadata.get_ddl('PROCEDURE', dev_only_procs(i), dev_schema_name);
@@ -518,7 +516,7 @@ BEGIN
 
     ddl_script        := replace(ddl_script, dev_schema_name, prod_schema_name);
     dbms_output.put_line(ddl_script);
-    dbms_output.put_line('Only PROD procedures =========================');
+    dbms_output.put_line('Only PROD procedures >>>>>>>>>>>>>>>>>>>>>>>>>>');
     ddl_script        := '';
     FOR i IN 1..prod_only_procs.count LOOP
         ddl_script := ddl_script || dbms_metadata.get_ddl('PROCEDURE', prod_only_procs(i), prod_schema_name);
@@ -526,7 +524,7 @@ BEGIN
 
     ddl_script        := replace(ddl_script, dev_schema_name, prod_schema_name);
     dbms_output.put_line(ddl_script);
-    dbms_output.put_line(chr(10) || 'Procedures that have different parameters =========================');
+    dbms_output.put_line(chr(10) || 'Procedures that have different parameters >>>>>>>>>>>>>>>>>>>>>>>>>>');
     ddl_script        := '';
     FOR i IN 1..different_procs.count LOOP
         ddl_script := ddl_script || 'DROP PROCEDURE' || prod_schema_name || '.' || different_procs(i) || ';';
@@ -587,7 +585,7 @@ BEGIN
 
     dev_only_funcs    := dev_funcs MULTISET EXCEPT prod_funcs;
     prod_only_funcs   := prod_funcs MULTISET EXCEPT dev_funcs;
-    dbms_output.put_line(chr(10) || 'Only DEV functions =========================');
+    dbms_output.put_line(chr(10) || 'Only DEV functions >>>>>>>>>>>>>>>>>>>>>>>>>>');
     ddl_script        := '';
     FOR i IN 1..dev_only_funcs.count LOOP
         ddl_script := ddl_script || dbms_metadata.get_ddl('FUNCTION', dev_only_funcs(i), dev_schema_name);
@@ -595,7 +593,7 @@ BEGIN
 
     ddl_script        := replace(ddl_script, dev_schema_name, prod_schema_name);
     dbms_output.put_line(ddl_script);
-    dbms_output.put_line(chr(10) || 'Only PROD functions =========================');
+    dbms_output.put_line(chr(10) || 'Only PROD functions >>>>>>>>>>>>>>>>>>>>>>>>>>');
     ddl_script        := '';
     FOR i IN 1..prod_only_funcs.count LOOP
         ddl_script := ddl_script || dbms_metadata.get_ddl('FUNCTION', prod_only_funcs(i), prod_schema_name);
@@ -603,7 +601,7 @@ BEGIN
 
     ddl_script        := replace(ddl_script, dev_schema_name, prod_schema_name);
     dbms_output.put_line(ddl_script);
-    dbms_output.put_line(chr(10) || 'Functions with different parameters or return type =========================');
+    dbms_output.put_line(chr(10) || 'Functions with different parameters or return type >>>>>>>>>>>>>>>>>>>>>>>>>>');
     ddl_script        := '';
     FOR i IN 1..different_funcs.count LOOP
         ddl_script := ddl_script || 'DROP FUNCTION' || prod_schema_name || '.' || different_funcs(i) || ';';
@@ -622,7 +620,7 @@ BEGIN
         AND index_name NOT LIKE 'SYS%';
     dev_only_indexes  := dev_indexes MULTISET EXCEPT prod_indexes;
     prod_only_indexes := prod_indexes MULTISET EXCEPT dev_indexes;
-    dbms_output.put_line('Only DEV indexes =========================');
+    dbms_output.put_line('Only DEV indexes >>>>>>>>>>>>>>>>>>>>>>>>>>');
     ddl_script        := '';
     FOR i IN 1..dev_only_indexes.count LOOP
         ddl_script := ddl_script || dbms_metadata.get_ddl('INDEX', dev_only_indexes(i), dev_schema_name);
@@ -630,7 +628,7 @@ BEGIN
 
     ddl_script        := replace(ddl_script, dev_schema_name, prod_schema_name);
     dbms_output.put_line(ddl_script);
-    dbms_output.put_line('Only PROD indexes =========================');
+    dbms_output.put_line('Only PROD indexes >>>>>>>>>>>>>>>>>>>>>>>>>>');
     ddl_script        := '';
     FOR i IN 1..prod_only_indexes.count LOOP
         ddl_script := ddl_script || 'DROP INDEX' || prod_schema_name || '.' || prod_only_indexes(i) || ';';
