@@ -16,88 +16,87 @@ CREATE TABLE dev.university (
     CONSTRAINT university_id_pk PRIMARY KEY (id)
 );
 
-CREATE TABLE dev.group (
+CREATE TABLE dev.groups (
     id NUMBER NOT NULL,
     gr_name VARCHAR2(20) NOT NULL,
     university_id NUMBER NOT NULL,
+    slogan VARCHAR2(200) NOT NULL
     CONSTRAINT gr_id_pk PRIMARY KEY (id),
     CONSTRAINT university_id_fk FOREIGN KEY (university_id) REFERENCES dev.university (id)
 );
 
--- ALTER TABLE dev.group ADD gr_motto VARCHAR2(200) NOT NULL;
-
--- CREATE INDEX gr_motto_idx ON dev.group (gr_motto);
+CREATE INDEX gr_motto_idx ON dev.groups (slogan);
 
 CREATE TABLE dev.student (
-    st_id NUMBER NOT NULL,
+    id NUMBER NOT NULL,
     st_name VARCHAR2(20) NOT NULL,
     gr_id NUMBER NOT NULL,
-    CONSTRAINT st_id_pk PRIMARY KEY (st_id),
-    CONSTRAINT gr_id_fk FOREIGN KEY (gr_id) REFERENCES dev.group (id)
+    CONSTRAINT st_id_pk PRIMARY KEY (id),
+    CONSTRAINT gr_id_fk FOREIGN KEY (gr_id) REFERENCES dev.groups (id)
 );
 
 CREATE TABLE dev.person (
-    h_id NUMBER NOT NULL,
+    id NUMBER NOT NULL,
     acc_id NUMBER UNIQUE NOT NULL,
-    CONSTRAINT h_id_pk PRIMARY KEY (h_id)
+    CONSTRAINT p_id_pk PRIMARY KEY (id)
 );
 
-CREATE TABLE dev.account (
-    acc_id NUMBER NOT NULL,
-    h_id NUMBER UNIQUE NOT NULL,
-    CONSTRAINT acc_id_pk PRIMARY KEY (acc_id),
-    CONSTRAINT h_id_fk FOREIGN KEY (h_id) REFERENCES dev.human (h_id)
+CREATE TABLE dev.acc (
+    id NUMBER NOT NULL,
+    p_id NUMBER UNIQUE NOT NULL,
+    CONSTRAINT acc_id_pk PRIMARY KEY (id),
+    CONSTRAINT p_id_fk FOREIGN KEY (p_id) REFERENCES dev.person (id)
 );
 
-ALTER TABLE dev.human ADD CONSTRAINT acc_id_fk FOREIGN KEY (acc_id) REFERENCES dev.account (acc_id);
+ALTER TABLE dev.person ADD CONSTRAINT acc_id_fk FOREIGN KEY (acc_id) REFERENCES dev.acc (id);
 
-CREATE TABLE dev.aa (
+CREATE TABLE dev.test1 (
     id NUMBER PRIMARY KEY,
-    b_id NUMBER NOT NULL
+    t2_id NUMBER NOT NULL
 );
 
-CREATE TABLE dev.bb (
+CREATE TABLE dev.test2 (
     id NUMBER PRIMARY KEY,
-    c_id NUMBER NOT NULL
+    t3_id NUMBER NOT NULL
 );
 
-CREATE TABLE dev.cc (
+CREATE TABLE dev.test3 (
     id NUMBER PRIMARY KEY,
-    a_id NUMBER NOT NULL
+    t1_id NUMBER NOT NULL
 );
 
-ALTER TABLE dev.aa ADD CONSTRAINT fk_a_b FOREIGN KEY (b_id) REFERENCES dev.bb (id);
+ALTER TABLE dev.test1 ADD CONSTRAINT fk_t1_t2 FOREIGN KEY (t2_id) REFERENCES dev.test2 (id);
 
-ALTER TABLE dev.bb ADD CONSTRAINT fk_b_c FOREIGN KEY (c_id) REFERENCES dev.cc (id);
+ALTER TABLE dev.test2 ADD CONSTRAINT fk_t2_t3 FOREIGN KEY (t3_id) REFERENCES dev.test3 (id);
 
-ALTER TABLE dev.cc ADD CONSTRAINT fk_c_a FOREIGN KEY (a_id) REFERENCES dev.aa (id);
+ALTER TABLE dev.test3 ADD CONSTRAINT fk_t3_t1 FOREIGN KEY (t1_id) REFERENCES dev.test1 (id);
 
 -- PROD SCHEME
 
-CREATE TABLE prod.uni (
-    uni_id NUMBER NOT NULL,
-    uni_name VARCHAR2(20) NOT NULL,
-    CONSTRAINT uni_id_pk PRIMARY KEY (uni_id)
-);
+    CREATE TABLE prod.university (
+        id NUMBER NOT NULL,
+        university_name VARCHAR2(20) NOT NULL,
+        CONSTRAINT university_id_pk PRIMARY KEY (id)
+    );
 
-CREATE TABLE prod.groups (
-    gr_id NUMBER NOT NULL,
-    gr_name VARCHAR2(20) NOT NULL,
-    uni_id NUMBER NOT NULL,
-    st_count NUMBER NOT NULL,
-    CONSTRAINT gr_id_pk PRIMARY KEY (gr_id),
-    CONSTRAINT uni_id_fk FOREIGN KEY (uni_id) REFERENCES prod.uni (uni_id)
-);
+    CREATE TABLE prod.groups (
+        id NUMBER NOT NULL,
+        gr_name VARCHAR2(20) NOT NULL,
+        university_id NUMBER NOT NULL,
+        st_count NUMBER NOT NULL,
+        CONSTRAINT gr_id_pk PRIMARY KEY (id),
+        CONSTRAINT university_id_fk FOREIGN KEY (university_id) REFERENCES prod.university_id (id)
+    );
 
-CREATE TABLE prod.students (
-    st_id NUMBER NOT NULL,
-    st_name VARCHAR2(20) NOT NULL,
-    st_surname VARCHAR2(20) NOT NULL,
-    gr_id NUMBER NOT NULL,
-    CONSTRAINT st_id_pk PRIMARY KEY (st_id),
-    CONSTRAINT gr_id_fk FOREIGN KEY (gr_id) REFERENCES prod.groups (gr_id)
-);
+    CREATE TABLE prod.students (
+        id NUMBER NOT NULL,
+        st_name VARCHAR2(20) NOT NULL,
+        st_surname VARCHAR2(20) NOT NULL,
+        gr_id NUMBER NOT NULL,
+        CONSTRAINT st_id_pk PRIMARY KEY (id),
+        CONSTRAINT gr_id_fk FOREIGN KEY (gr_id) REFERENCES prod.groups (id)
+    );
 
-ALTER TABLE prod.students ADD CONSTRAINT st_name_length_check CHECK (length(st_name) >= 10);
+    ALTER TABLE prod.students ADD CONSTRAINT st_name_length_check CHECK (length(st_name) >= 10);
 
 CREATE INDEX st_name_idx ON prod.students (st_name);
