@@ -6,9 +6,9 @@ CREATE USER lab3 IDENTIFIED BY "root";
 GRANT sysdba TO lab3 container=all;
 
 
--- CREATE TABLES
+-- TABLES
 
--- DEV SCHEME
+-- DEV
 
 CREATE TABLE dev.university (
     id NUMBER NOT NULL,
@@ -71,32 +71,76 @@ ALTER TABLE dev.test2 ADD CONSTRAINT fk_t2_t3 FOREIGN KEY (t3_id) REFERENCES dev
 
 ALTER TABLE dev.test3 ADD CONSTRAINT fk_t3_t1 FOREIGN KEY (t1_id) REFERENCES dev.test1 (id);
 
--- PROD SCHEME
+-- PROD
 
-    CREATE TABLE prod.university (
-        id NUMBER NOT NULL,
-        university_name VARCHAR2(20) NOT NULL,
-        CONSTRAINT university_id_pk PRIMARY KEY (id)
-    );
+CREATE TABLE prod.university (
+    id NUMBER NOT NULL,
+    university_name VARCHAR2(20) NOT NULL,
+    CONSTRAINT university_id_pk PRIMARY KEY (id)
+);
 
-    CREATE TABLE prod.groups (
-        id NUMBER NOT NULL,
-        gr_name VARCHAR2(20) NOT NULL,
-        university_id NUMBER NOT NULL,
-        st_count NUMBER NOT NULL,
-        CONSTRAINT gr_id_pk PRIMARY KEY (id),
-        CONSTRAINT university_id_fk FOREIGN KEY (university_id) REFERENCES prod.university_id (id)
-    );
+CREATE TABLE prod.groups (
+    id NUMBER NOT NULL,
+    gr_name VARCHAR2(20) NOT NULL,
+    university_id NUMBER NOT NULL,
+    st_count NUMBER NOT NULL,
+    CONSTRAINT gr_id_pk PRIMARY KEY (id),
+    CONSTRAINT university_id_fk FOREIGN KEY (university_id) REFERENCES prod.university_id (id)
+);
 
-    CREATE TABLE prod.students (
-        id NUMBER NOT NULL,
-        st_name VARCHAR2(20) NOT NULL,
-        st_surname VARCHAR2(20) NOT NULL,
-        gr_id NUMBER NOT NULL,
-        CONSTRAINT st_id_pk PRIMARY KEY (id),
-        CONSTRAINT gr_id_fk FOREIGN KEY (gr_id) REFERENCES prod.groups (id)
-    );
+CREATE TABLE prod.students (
+    id NUMBER NOT NULL,
+    st_name VARCHAR2(20) NOT NULL,
+    st_surname VARCHAR2(20) NOT NULL,
+    gr_id NUMBER NOT NULL,
+    CONSTRAINT st_id_pk PRIMARY KEY (id),
+    CONSTRAINT gr_id_fk FOREIGN KEY (gr_id) REFERENCES prod.groups (id)
+);
 
-    ALTER TABLE prod.students ADD CONSTRAINT st_name_length_check CHECK (length(st_name) >= 10);
+ALTER TABLE prod.students ADD CONSTRAINT st_name_length_check CHECK (length(st_name) >= 10);
 
 CREATE INDEX st_name_idx ON prod.students (st_name);
+
+
+-- FUNCTIONS 
+
+CREATE OR REPLACE FUNCTION dev.hello_world_func RETURN VARCHAR2 AS
+BEGIN
+    RETURN 'Hello world';
+END;
+
+CREATE OR REPLACE FUNCTION dev.cur_date_func RETURN NUMBER AS
+BEGIN
+    RETURN 1;
+END;
+
+CREATE OR REPLACE FUNCTION prod.cur_date_func RETURN DATE AS
+BEGIN
+    RETURN sysdate;
+END;
+
+CREATE OR REPLACE FUNCTION prod.goodbye_world_func RETURN VARCHAR2 AS
+BEGIN
+    RETURN 'Goodbye world';
+END;
+
+CREATE OR REPLACE FUNCTION dev.diff_param_func (param1 VARCHAR2) RETURN VARCHAR2 AS
+BEGIN
+    RETURN 'Param VARCHAR2: ' || param1;
+END;
+
+CREATE OR REPLACE FUNCTION prod.diff_param_func (param1 VARCHAR2, param2 NUMBER) RETURN NUMBER AS
+BEGIN
+    RETURN param2;
+END;
+
+CREATE OR REPLACE FUNCTION dev.diff_code_func (param1 VARCHAR2) RETURN VARCHAR2 AS
+BEGIN
+    RETURN 'Param VARCHAR2: ' || param1;
+END;
+
+CREATE OR REPLACE FUNCTION prod.diff_code_func (param1 VARCHAR2) RETURN VARCHAR2 AS
+BEGIN
+    RETURN 'Param param VARCHAR2: ' || param1;
+END;
+
