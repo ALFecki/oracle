@@ -10,6 +10,12 @@ GRANT sysdba TO lab3 container=all;
 
 -- DEV
 
+DROP TABLE dev.student;
+
+DROP TABLE dev.groups;
+
+DROP TABLE dev.university;
+
 CREATE TABLE dev.university (
     id NUMBER NOT NULL,
     university_name VARCHAR2(20) NOT NULL,
@@ -20,12 +26,12 @@ CREATE TABLE dev.groups (
     id NUMBER NOT NULL,
     gr_name VARCHAR2(20) NOT NULL,
     university_id NUMBER NOT NULL,
-    slogan VARCHAR2(200) NOT NULL
+    slogan VARCHAR2(200) NOT NULL,
     CONSTRAINT gr_id_pk PRIMARY KEY (id),
     CONSTRAINT university_id_fk FOREIGN KEY (university_id) REFERENCES dev.university (id)
 );
 
-CREATE INDEX gr_motto_idx ON dev.groups (slogan);
+CREATE INDEX gr_slogan_idx ON dev.groups (slogan);
 
 CREATE TABLE dev.student (
     id NUMBER NOT NULL,
@@ -71,7 +77,29 @@ ALTER TABLE dev.test2 ADD CONSTRAINT fk_t2_t3 FOREIGN KEY (t3_id) REFERENCES dev
 
 ALTER TABLE dev.test3 ADD CONSTRAINT fk_t3_t1 FOREIGN KEY (t1_id) REFERENCES dev.test1 (id);
 
+
+
+ALTER TABLE dev.test3 DROP CONSTRAINT fk_t3_t1;
+
+ALTER TABLE dev.acc DROP CONSTRAINT p_id_fk;
+
+DROP TABLE dev.test1;
+
+DROP TABLE dev.test2;
+
+DROP TABLE dev.test3;
+
+DROP TABLE dev.person;
+
+DROP TABLE dev.acc;
+
 -- PROD
+
+DROP TABLE prod.students;
+
+DROP TABLE prod.groups;
+
+DROP TABLE prod.university;
 
 CREATE TABLE prod.university (
     id NUMBER NOT NULL,
@@ -85,7 +113,7 @@ CREATE TABLE prod.groups (
     university_id NUMBER NOT NULL,
     st_count NUMBER NOT NULL,
     CONSTRAINT gr_id_pk PRIMARY KEY (id),
-    CONSTRAINT university_id_fk FOREIGN KEY (university_id) REFERENCES prod.university_id (id)
+    CONSTRAINT university_id_fk FOREIGN KEY (university_id) REFERENCES prod.university (id)
 );
 
 CREATE TABLE prod.students (
