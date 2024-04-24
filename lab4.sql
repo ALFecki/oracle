@@ -1,7 +1,7 @@
 -- MAIN TASK
 
 CREATE OR REPLACE NONEDITIONABLE PROCEDURE parse_json_proc(
-    json_str CLOB
+    json_str CLOB, result_cursor OUT SYS_REFCURSOR
 ) IS
     v_drop_param        VARCHAR2(2000);
     v_query_type        VARCHAR2(100);
@@ -188,7 +188,7 @@ BEGIN
         DBMS_OUTPUT.PUT_LINE('Result query: ' || v_sql);
         
         
-        OPEN v_cursor FOR v_sql;
+        OPEN result_cursor FOR v_sql;
         
         
     ELSIF v_query_type = 'INSERT' THEN
@@ -217,6 +217,8 @@ BEGIN
             v_included_values := process_select_condition(TREAT(v_json_data.get('values') AS json_object_t));
             v_sql := 'INSERT INTO ' || v_tables || ' (' || v_columns || ')' || v_included_values;
         END IF;
+
+        EXECUTE IMMEDIATE v_sql;
         
     ELSIF v_query_type = 'DELETE' THEN
     
@@ -238,6 +240,8 @@ BEGIN
             v_operator := v_json_data.get_string('operator');
             v_sql := 'DELETE FROM ' || v_tables || ' WHERE ' || v_operator || v_filter_conditions;
         END IF;
+
+        EXECUTE IMMEDIATE v_sql;
         
         
     ELSIF v_query_type = 'UPDATE' THEN
@@ -297,49 +301,74 @@ BEGIN
         FROM JSON_TABLE (json_str,
             '$.filter_conditions[*]' COLUMNS (condition VARCHAR2 (4000) PATH '$')) j;
 
-            
-            
-    ELSIF v_query_type = 'CREATE TABLE' THEN
+        EXECUTE IMMEDIATE v_sql;
 
-        DBMS_OUTPUT.PUT_LINE('CREATE TABLE statement');
+            
+            
+ELSIF v_query_type = 'CREATE TABLE' THEN
+    DBMS_OUTPUT.PUT_LINE('CREATE TABLE statement');
+
+    SELECT json_value(json_str, '$.table') INTO v_tables
+    FROM dual;
+
+    SELECT LISTAGG(column_name || ' ' || data_type, ', ') WITHIN GROUP (ORDER BY column_name) INTO v_columns
+    FROM JSON_TABLE (json_str,
+        '$.columns[*]' COLUMNS ( column_name VARCHAR2(100) PATH '$.name',
+        data_type VARCHAR2(100) PATH '$.type') ) j;
+
+    SELECT LISTAGG ('constraint pk_' || v_tables || '_' || col_name || ' primary key (' || col_name || ')', ', ')
+                WITHIN GROUP (ORDER BY col_name) INTO v_pks
+    FROM JSON_TABLE (json_str,
+        '$.primary_keys[*]' COLUMNS (col_name VARCHAR2 (4000) PATH '$')) j;
+
+    SELECT LISTAGG ('constraint fk_' || v_tables || '_' || col_name || ' FOREIGN  key (' || col_name || ') references ' || table_name || '(' || ref_field || ')', ', ')
+                WITHIN GROUP (ORDER BY col_name) INTO v_fks
+    FROM JSON_TABLE (json_str,
+        '$.foreign_keys [*]' COLUMNS (col_name VARCHAR2 (4000) PATH '$.field',
+        table_name VARCHAR2 (4000) PATH '$.table',
+        ref_field VARCHAR2 (4000) PATH '$.ref_field')) j;
+
+    v_sql := 'CREATE TABLE ' || v_tables || ' (' || v_columns;
+
+    IF v_pks IS NOT NULL THEN
+        v_sql := v_sql || ', ' || v_pks;
+    END IF;
+
+    IF v_fks IS NOT NULL THEN
+        v_sql := v_sql || ', ' || v_fks;
+    END IF;
+
+    v_sql := v_sql || ')';
+
+    SELECT json_value(json_str, '$.primary_keys[0]') INTO v_pks
+    FROM dual;
+
+    DBMS_OUTPUT.PUT_LINE(v_sql);
+    EXECUTE IMMEDIATE v_sql;
+
+    v_sql := '
+        CREATE SEQUENCE ' || v_tables || '_seq start with 1';
     
-        SELECT json_value(json_str, '$.table') INTO v_tables
-        FROM dual;
-        
-        SELECT LISTAGG(column_name || ' ' || data_type, ', ') INTO v_columns
-        FROM JSON_TABLE (json_str,
-            '$.columns[*]' COLUMNS ( column_name VARCHAR2(100) PATH '$.name',
-            data_type VARCHAR2(100) PATH '$.type') ) j;
-        
-        SELECT LISTAGG ('constraint pk_' || v_tables || '_' || col_name || ' primary key (' || col_name || ')', ', ') INTO v_pks
-        FROM JSON_TABLE (json_str,
-            '$.primary_keys[*]' COLUMNS (col_name VARCHAR2 (4000) PATH '$')) j;
-        
-        SELECT LISTAGG ('constraint fk_' || v_tables || '_' || col_name || ' FOREIGN  key (' || col_name || ') references ' || table_name || '(' || ref_field || ')', ', ') INTO v_fks
-        FROM JSON_TABLE (json_str,
-            '$.foreign_keys [*]' COLUMNS (col_name VARCHAR2 (4000) PATH '$.field',
-            table_name VARCHAR2 (4000) PATH '$.table',
-            ref_field VARCHAR2 (4000) PATH '$.ref_field')) j;
-        
-        v_sql := 'CREATE TABLE ' || v_tables || ' (' || v_columns || ', ' || v_pks || ', ' || v_fks || ');';
-        
-        SELECT json_value(json_str, '$.primary_keys[0]') INTO v_pks
-        FROM dual;
-        
-        v_sql := v_sql || ' ' || '
+    DBMS_OUTPUT.PUT_LINE(v_sql);
+    EXECUTE IMMEDIATE v_sql;
+    
+    v_sql:= '
+        CREATE OR REPLACE TRIGGER tr_' || v_tables || '_pk_autoincrement
+        BEFORE INSERT ON ' || v_tables || '
+        FOR EACH ROW
+        BEGIN
+        SELECT ' || v_tables || '_seq' || '.NEXTVAL
+        INTO :NEW.' || v_pks || '
+        FROM DUAL;
+        END';
 
-            CREATE SEQUENCE ' || v_tables || '_seq start with 1;' || '
-            CREATE OR REPLACE TRIGGER tr_' || v_tables || '_pk_autoincrement
-            BEFORE INSERT ON ' || v_tables || '
-            FOR EACH ROW
-            BEGIN
-            SELECT ' || v_tables || '_seq' || '.NEXTVAL
-            INTO :NEW.' || v_pks || '
-            FROM DUAL;
-            END;';
-            
-        DBMS_OUTPUT.PUT_LINE(v_sql);
-            
+    DBMS_OUTPUT.PUT_LINE(v_sql);
+    EXECUTE IMMEDIATE v_sql;
+    
+
+    DBMS_OUTPUT.PUT_LINE('Table created!');
+
+
     ELSIF v_query_type = 'DROP TABLE' THEN
     
         v_drop_param := v_json_data.get_string('parameters');
@@ -352,6 +381,7 @@ BEGIN
         IF v_drop_param = 'purge' THEN
             v_sql := v_sql || ' purge';
         END IF;
+        EXECUTE IMMEDIATE v_sql;
         
     ELSE
         raise_application_error( - 20005, 'Incorrect query type ');
@@ -362,8 +392,12 @@ END;
 
 -- TEST
 
+--DROP TABLE t1;
+--DROP SEQUENCE t1_seq;
+
 DECLARE
   v_col      VARCHAR2(8000);
+  output_cursor SYS_REFCURSOR;
   
    json_create_t1 CLOB := '{
       "query_type": "CREATE TABLE",
@@ -376,7 +410,7 @@ DECLARE
             "name": "num", "type": "NUMBER"
          },
          {
-            "name": "val", "type": "VARCHAR2"
+            "name": "val", "type": "VARCHAR2(200)"
          }
       ],
       "primary_keys": ["id"]
@@ -394,7 +428,7 @@ DECLARE
             "name": "num", "type": "NUMBER"
          },
          {
-            "name": "val", "type": "VARCHAR2"
+            "name": "val", "type": "VARCHAR2(200)"
          },
          {
             "name": "t1_k", "type": "NUMBER"
@@ -424,8 +458,11 @@ DECLARE
         "columns": ["id"],
         "tables": ["t2"],
         "filter_conditions": [
-          {"condition": "num between 2 and 4", "operator": "AND"},
-          {"condition": "val like ''%a%''", "operator": "AND"}
+          {"condition": "val like ''%a%''", "operator": "AND"},
+          {
+            "condition": "num between 2 and 4",
+            "operator": "AND"
+          }
         ],
         "operator": "IN",
         "search_col": "t1.id"
@@ -445,7 +482,7 @@ DECLARE
   "tables": [
     "aaa"
   ],
-  "join_conditions": [],
+  "join_block": [],
   "filter_conditions": [
     {
       "condition_type": "included",
@@ -456,14 +493,15 @@ DECLARE
           "bbb"
         ],
         "filter_conditions": [
-          {
-            "condition": "name like ''%''",
+                  {
+            "condition": "id between 3 and 5",
             "operator": "AND"
           },
           {
-            "condition": "id between 3 and 5",
+            "condition": "name like ''%''",
             "operator": "AND"
           }
+
         ],
         "operator": "NOT IN",
         "search_col": "id"
@@ -477,9 +515,11 @@ DECLARE
 -- 
 
 BEGIN
-    -- parse_json_proc(json_test_join_select);
-    -- parse_json_proc(json_create_t1);
-    -- parse_json_proc(json_create_t2);
-    parse_json_proc(json_select_t1_t2);
+    
+    
+--     parse_json_proc(json_test_join_select, output_cursor);
+--     parse_json_proc(json_create_t1, output_cursor);
+--     parse_json_proc(json_create_t2, output_cursor);
+    parse_json_proc(json_select_t1_t2, output_cursor);
   
 END;
