@@ -1,6 +1,3 @@
-alter session set container=freepdb1;
-
-
 CREATE OR REPLACE NONEDITIONABLE PROCEDURE parse_json_proc(
     json_str CLOB
 ) IS
@@ -193,6 +190,9 @@ BEGIN
         
         
     ELSIF v_query_type = 'INSERT' THEN
+
+        DBMS_OUTPUT.PUT_LINE('INSERT statement');
+
     
         SELECT json_value(json_str, '$.table') INTO v_tables
         FROM dual;
@@ -218,6 +218,8 @@ BEGIN
         
     ELSIF v_query_type = 'DELETE' THEN
     
+
+        DBMS_OUTPUT.PUT_LINE('DELETE statement');
         SELECT json_value(json_str, '$.table') INTO v_tables
         FROM dual;
         
@@ -237,6 +239,8 @@ BEGIN
         
         
     ELSIF v_query_type = 'UPDATE' THEN
+
+        DBMS_OUTPUT.PUT_LINE('UPDATE statement');
     
         SELECT json_value(json_str, '$.table') INTO v_tables
         FROM dual;
@@ -294,6 +298,8 @@ BEGIN
             
             
     ELSIF v_query_type = 'CREATE TABLE' THEN
+
+        DBMS_OUTPUT.PUT_LINE('CREATE TABLE statement');
     
         SELECT json_value(json_str, '$.table') INTO v_tables
         FROM dual;
@@ -320,7 +326,7 @@ BEGIN
         
         v_sql := v_sql || ' ' || '
 
-            create sequence ' || v_tables || '_seq start with 1;' || '
+            CREATE SEQUENCE ' || v_tables || '_seq start with 1;' || '
             CREATE OR REPLACE TRIGGER tr_' || v_tables || '_pk_autoincrement
             BEFORE INSERT ON ' || v_tables || '
             FOR EACH ROW
