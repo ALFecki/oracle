@@ -357,7 +357,6 @@ END report;
 
 END func_package;
 
-
 -- PROCEDURES FOR MAIN PACKAGE
 CREATE
 OR REPLACE PROCEDURE rollback_by_date (date_time IN TIMESTAMP) AS v_cur timestamp := systimestamp;
@@ -512,7 +511,6 @@ cur_state_timestamp_pkg.set_time(date_time);
 
 END;
 
-
 CREATE
 OR REPLACE PROCEDURE create_report(t_begin IN TIMESTAMP, t_end IN TIMESTAMP) AS v_result VARCHAR2(4000);
 
@@ -643,3 +641,83 @@ v_result := v_result || '</table>';
 dbms_output.put_line(v_result);
 
 END;
+
+-- TESTS
+DELETE FROM
+    uni;
+
+DELETE FROM
+    groups;
+
+DELETE FROM
+    students;
+
+DELETE FROM
+    uni_logs;
+
+DELETE FROM
+    groups_logs;
+
+DELETE FROM
+    students_logs;
+
+DELETE from
+    reports_logs;
+
+INSERT INTO
+    uni (uni_name, creation_date)
+VALUES
+(
+        'u1',
+        '11-MAR-24 06.41.24.789000000 PM'
+    );
+
+INSERT INTO
+    uni (uni_name, creation_date)
+VALUES
+(
+        'u2',
+        '16-MAR-24 06.41.24.789000000 PM'
+    );
+
+INSERT INTO
+    uni (uni_name, creation_date)
+VALUES
+(
+        'u3',
+        '18-MAR-24 08.45.45.789000000 PM'
+    );
+
+UPDATE
+    uni
+SET
+    creation_date = systimestamp
+WHERE
+    uni_name = 'u1';
+
+DELETE FROM
+    uni
+WHERE
+    uni_name = 'u3';
+
+SELECT
+    *
+FROM
+    uni_logs
+ORDER BY
+    change_date;
+
+SELECT
+    *
+FROM
+    uni
+ORDER BY
+    uni_id;
+
+CALL func_package.roll_back(to_timestamp('22-MAR-24 09.07.46.960000000 PM'));
+
+CALL func_package.roll_back(1200000);
+
+CALL func_package.report();
+
+CALL func_package.report(to_timestamp('22-MAR-24 09.07.46.926000000 PM'))
