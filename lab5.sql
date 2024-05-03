@@ -1,15 +1,16 @@
 CREATE USER lab5 IDENTIFIED BY "root";
 GRANT sysdba TO lab5;
+GRANT UNLIMITED TABLESPACE TO lab5;
 ALTER SESSION SET CURRENT_SCHEMA = lab5;
 
 -- TABLES
-DROP TABLE IF EXISTS uni;
-DROP TABLE IF EXISTS groups;
-DROP TABLE IF EXISTS students;
-DROP TABLE IF EXISTS uni_logs;
-DROP TABLE IF EXISTS groups_logs;
-DROP TABLE IF EXISTS students_logs;
-DROP TABLE IF EXISTS reports_logs;
+DROP TABLE uni;
+DROP TABLE groups;
+DROP TABLE students;
+DROP TABLE uni_logs;
+DROP TABLE groups_logs;
+DROP TABLE students_logs;
+DROP TABLE reports_logs;
 
 
 CREATE TABLE uni (
@@ -138,6 +139,7 @@ VALUES
 END IF;
 
 END;
+/
 
 CREATE
 OR REPLACE TRIGGER tr_groups
@@ -208,6 +210,7 @@ VALUES
 END IF;
 
 END;
+/
 
 CREATE
 OR REPLACE TRIGGER tr_students
@@ -278,6 +281,7 @@ VALUES
 END IF;
 
 END;
+/
 
 -- TIMESTAMP PACKAGE
 CREATE
@@ -286,6 +290,7 @@ OR REPLACE PACKAGE cur_state_timestamp_pkg IS cur_state_time timestamp;
 PROCEDURE set_time(p_value IN TIMESTAMP);
 
 END cur_state_timestamp_pkg;
+/
 
 CREATE
 OR REPLACE PACKAGE BODY cur_state_timestamp_pkg IS PROCEDURE set_time(p_value IN TIMESTAMP) IS BEGIN cur_state_time := p_value;
@@ -293,6 +298,7 @@ OR REPLACE PACKAGE BODY cur_state_timestamp_pkg IS PROCEDURE set_time(p_value IN
 END set_time;
 
 END cur_state_timestamp_pkg;
+/
 
 -- MAIN PACKAGE
 CREATE
@@ -305,6 +311,7 @@ PROCEDURE report(t_begin IN TIMESTAMP);
 PROCEDURE report;
 
 END func_package;
+/
 
 create
 OR REPLACE PACKAGE BODY func_package IS PROCEDURE roll_back(date_time TIMESTAMP) IS BEGIN rollback_by_date(date_time);
@@ -369,6 +376,7 @@ VALUES
 END report;
 
 END func_package;
+/
 
 -- PROCEDURES FOR MAIN PACKAGE
 CREATE
@@ -523,6 +531,7 @@ WHERE
 cur_state_timestamp_pkg.set_time(date_time);
 
 END;
+/
 
 CREATE
 OR REPLACE PROCEDURE create_report(t_begin IN TIMESTAMP, t_end IN TIMESTAMP) AS v_result VARCHAR2(4000);
@@ -654,6 +663,7 @@ v_result := v_result || '</table>';
 dbms_output.put_line(v_result);
 
 END;
+/
 
 -- TESTS
 DELETE FROM
@@ -682,7 +692,7 @@ INSERT INTO
 VALUES
 (
         'u1',
-        '11-MAR-24 06.41.24.789000000 PM'
+        TO_TIMESTAMP('29-APR-24 06.41.24.789000000 PM', 'DD-MON-RR HH.MI.SS.FF9 PM')   
     );
 
 INSERT INTO
@@ -690,7 +700,7 @@ INSERT INTO
 VALUES
 (
         'u2',
-        '16-MAR-24 06.41.24.789000000 PM'
+        TO_TIMESTAMP('01-MAY-24 06.41.24.789000000 PM', 'DD-MON-RR HH.MI.SS.FF9 PM')   
     );
 
 INSERT INTO
@@ -698,7 +708,7 @@ INSERT INTO
 VALUES
 (
         'u3',
-        '18-MAR-24 08.45.45.789000000 PM'
+        TO_TIMESTAMP('02-MAY-24 08.45.45.789000000 PM', 'DD-MON-RR HH.MI.SS.FF9 PM')   
     );
 
 UPDATE
@@ -727,10 +737,25 @@ FROM
 ORDER BY
     uni_id;
 
-CALL func_package.roll_back(to_timestamp('22-MAR-24 09.07.46.960000000 PM'));
+CALL func_package.roll_back(to_timestamp('01-MAY-24 09.07.46.960000000 PM', 'DD-MON-RR HH.MI.SS.FF9 PM'));
 
 CALL func_package.roll_back(1200000);
 
 CALL func_package.report();
 
-CALL func_package.report(to_timestamp('22-MAR-24 09.07.46.926000000 PM'))
+CALL func_package.report(to_timestamp('01-MAY-24 09.07.46.926000000 PM', 'DD-MON-RR HH.MI.SS.FF9 PM'));
+
+
+SELECT
+    *
+FROM
+    uni_logs
+ORDER BY
+    change_date;
+
+SELECT
+    *
+FROM
+    uni
+ORDER BY
+    uni_id;
