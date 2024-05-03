@@ -737,13 +737,16 @@ FROM
 ORDER BY
     uni_id;
 
-CALL func_package.roll_back(to_timestamp('01-MAY-24 09.07.46.960000000 PM', 'DD-MON-RR HH.MI.SS.FF9 PM'));
+-- Стоит обращать внимание на AM и PM
+CALL func_package.roll_back(to_timestamp('03-MAY-24 11.03.53.585000000 AM', 'DD-MON-RR HH.MI.SS.FF9 PM'));
 
-CALL func_package.roll_back(1200000);
+--CALL func_package.roll_back(1200000);
 
+
+-- Отчет показывается либо от последнего отчета, либо от указанной даты
 CALL func_package.report();
 
-CALL func_package.report(to_timestamp('01-MAY-24 09.07.46.926000000 PM', 'DD-MON-RR HH.MI.SS.FF9 PM'));
+--CALL func_package.report(to_timestamp('03-MAY-24 11.03.53.600000000 PM', 'DD-MON-RR HH.MI.SS.FF9 PM'));
 
 
 SELECT
